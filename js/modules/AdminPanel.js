@@ -325,14 +325,12 @@ class AdminPanel {
     }
 
     renderUsersTab() {
-        // Show loading state
-        const contentDiv = document.querySelector('#admin-content');
-        if (contentDiv) {
-            contentDiv.innerHTML = '<div style="text-align: center; color: #667eea; padding: 30px;">Cargando usuarios...</div>';
-        }
-
         // Fetch from backend then render
         this.fetchUsersFromDB().then(dbUsers => {
+            // Re-query DOM element inside callback (panel may have been recreated)
+            const contentDiv = document.querySelector('#admin-content');
+            if (!contentDiv) return;
+
             let users = dbUsers;
             let fromDB = true;
 
@@ -343,7 +341,7 @@ class AdminPanel {
             }
 
             if (users.length === 0) {
-                if (contentDiv) contentDiv.innerHTML = '<div style="text-align: center; color: #888; padding: 30px; font-size: 16px;">No hay usuarios</div>';
+                contentDiv.innerHTML = '<div style="text-align: center; color: #888; padding: 30px; font-size: 16px;">No hay usuarios</div>';
                 return;
             }
 
@@ -351,7 +349,7 @@ class AdminPanel {
             const bans = typeof userModeration !== 'undefined' ? userModeration.getBannedUsers() : [];
 
             const html = `
-                <div style="margin-bottom: 10px; color: #888; font-size: 12px;">${fromDB ? '📡 Datos desde servidor' : '💾 Datos locales'}</div>
+                <div style="margin-bottom: 10px; color: #888; font-size: 12px;">${fromDB ? '📡 Datos desde servidor' : '💾 Datos locales'} (${users.length})</div>
                 ${users.map((user, i) => {
                 const email = user.email || '';
                 const name = user.name || user.username || email.split('@')[0];
@@ -385,12 +383,18 @@ class AdminPanel {
                     </div>
                 `}).join('')}`;
 
-            if (contentDiv) contentDiv.innerHTML = html;
+            contentDiv.innerHTML = html;
 
             // Add click handlers
             document.querySelectorAll('.user-card').forEach(card => {
                 card.addEventListener('click', () => this.showUserModal(parseInt(card.dataset.index)));
             });
+        }).catch(err => {
+            console.error('Error loading users:', err);
+            const contentDiv = document.querySelector('#admin-content');
+            if (contentDiv) {
+                contentDiv.innerHTML = `<div style="text-align: center; color: #ff4d4d; padding: 30px;">Error: ${err.message}</div>`;
+            }
         });
 
         return '<div style="text-align: center; color: #667eea; padding: 30px;">Cargando usuarios...</div>';
