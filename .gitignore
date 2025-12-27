@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Environment variables (NEVER commit!)
+server/.env
+.env
+encrypt_helper.html
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs
+dist/
+build/
+
+# Test files
+ai-test*.html
+ai-test*.js
+
+# Temporary files
+*.tmp
+*.temp

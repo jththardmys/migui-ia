@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migui IA</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar (History/Context) -->
+        <aside class="sidebar">
+            <div class="new-chat-btn" id="new-chat-btn">+ Nuevo Chat</div>
+            <div class="history-list" id="history-list">
+                <!-- Chats will be populated dynamically by ChatManager -->
+            </div>
+            <div class="sidebar-footer">
+                <div class="user-profile" id="user-profile-sidebar">
+                    <img class="avatar-img" id="sidebar-avatar"
+                        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='35' r='25' fill='%2310a37f'/%3E%3Ccircle cx='50' cy='110' r='45' fill='%2310a37f'/%3E%3C/svg%3E"
+                        alt="Avatar">
+                    <span id="sidebar-username">Usuario</span>
+                    <button class="settings-btn" id="settings-btn" title="Ajustes">⚙️</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Modal de inicio de sesión con Google -->
+        <div class="modal hidden" id="google-login-modal">
+            <div class="modal-content google-login-content">
+                <div class="login-logo">🤖</div>
+                <h2>¡Bienvenido a Migui IA!</h2>
+                <p>Inicia sesión con tu cuenta de Google para continuar</p>
+                <div id="google-signin-button" class="google-btn-container"></div>
+                <div class="login-footer">
+                    <span>🔒 Tu información está segura</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de registro de usuario (después de Google login) -->
+        <div class="modal hidden" id="username-modal">
+            <div class="modal-content username-modal-content">
+                <h2>👋 ¡Hola <span id="google-user-name">Usuario</span>!</h2>
+                <p>Elige un nombre de usuario para el chat:</p>
+                <input type="text" id="username-input" placeholder="Tu nombre de usuario..." maxlength="20"
+                    autocomplete="off">
+                <div class="modal-actions">
+                    <button id="save-username-btn">Comenzar a chatear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <main class="chat-area">
+            <div class="chat-header">
+                <span class="model-name" id="app-title">Migui IA <span class="badge">Study V1</span></span>
+            </div>
+
+            <div class="messages-container" id="messages-container">
+                <!-- Welcome Message -->
+                <div class="message ai" id="welcome-message">
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="ai-name">🤖 Migui</span>
+                        </div>
+                        <div class="message-text">
+                            <p>¡Hola <strong id="welcome-username">Usuario</strong>! Soy <strong>Migui</strong>.</p>
+                            <p>Estoy diseñado para ayudarte con tus estudios, resolver problemas matemáticos y buscar
+                                información compleja.</p>
+                            <p>¿En qué materia trabajamos hoy?</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <div id="limit-warning" class="limit-warning hidden">
+                    ⚠️ ¡Has alcanzado tu límite de preguntas diarias! Regresa mañana para seguir preguntando.
+                </div>
+                <div class="input-wrapper">
+                    <button id="attach-btn" aria-label="Adjuntar archivo"
+                        title="Adjuntar imagen o PDF (Ctrl+V también funciona)">
+                        📎
+                    </button>
+                    <textarea id="user-input" placeholder="Pregunta o pega una imagen (Ctrl+V)..." rows="1"></textarea>
+                    <button id="send-btn" aria-label="Enviar">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+                <input type="file" id="file-input" accept="image/*,.pdf" style="display: none;" />
+                <div id="file-preview" class="file-preview hidden"></div>
+                <div class="disclaimer">Migui puede cometer errores. Verifica la información importante.</div>
+            </div>
+        </main>
+
+        </main>
+    </div>
+
+    <!-- Application Logic -->
+    <!-- Application Logic (Order Matters) -->
+    <!-- OCR Library -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <script src="js/core/Context.js"></script>
+    <script src="js/modules/Toast.js"></script>
+    <script src="js/modules/WebSearch.js"></script>
+    <script src="js/modules/MathCore.js"></script>
+    <script src="js/modules/Crypto.js"></script>
+    <script src="js/modules/OCR.js"></script>
+    <script src="js/modules/LoopDetector.js"></script>
+    <script src="js/modules/SmartVerifier.js"></script>
+    <script src="js/modules/ReasoningEngine.js"></script>
+    <script src="js/modules/AIEngine.js"></script>
+    <script src="js/core/Brain.js"></script>
+    <script src="js/modules/PersistentStorage.js"></script>
+    <script src="js/modules/GoogleAuth.js"></script>
+    <script src="js/modules/UserProfile.js"></script>
+    <script src="js/modules/UserSettings.js"></script>
+    <script src="js/modules/UserModeration.js"></script>
+    <script src="js/modules/ActivityTracker.js"></script>
+    <script src="js/modules/ChatManager.js"></script>
+    <script src="js/modules/AdminPanel.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
