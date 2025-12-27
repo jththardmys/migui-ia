@@ -42,11 +42,19 @@ async function connectDB() {
     }
 
     try {
-        const client = new MongoClient(MONGODB_URI, {
+        // Add retryWrites and ssl options for Node.js 25 compatibility
+        const connectionString = MONGODB_URI.includes('?')
+            ? MONGODB_URI + '&retryWrites=true&w=majority'
+            : MONGODB_URI + '?retryWrites=true&w=majority';
+
+        const client = new MongoClient(connectionString, {
+            ssl: true,
             tls: true,
-            tlsAllowInvalidCertificates: false,
-            serverSelectionTimeoutMS: 5000,
-            connectTimeoutMS: 10000,
+            tlsAllowInvalidCertificates: true, // Required for some Node.js versions
+            tlsAllowInvalidHostnames: true,
+            serverSelectionTimeoutMS: 10000,
+            connectTimeoutMS: 15000,
+            maxPoolSize: 10,
         });
         await client.connect();
         db = client.db('migui_ia');
