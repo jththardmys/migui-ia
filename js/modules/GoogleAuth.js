@@ -134,6 +134,10 @@ class GoogleAuth {
             if (stored) {
                 this.user = JSON.parse(stored);
                 this.isAuthenticated = true;
+
+                // Track existing session to MongoDB (so all users get saved)
+                this.trackLogin();
+
                 return true;
             }
         } catch (e) {
