@@ -42,7 +42,12 @@ async function connectDB() {
     }
 
     try {
-        const client = new MongoClient(MONGODB_URI);
+        const client = new MongoClient(MONGODB_URI, {
+            tls: true,
+            tlsAllowInvalidCertificates: false,
+            serverSelectionTimeoutMS: 5000,
+            connectTimeoutMS: 10000,
+        });
         await client.connect();
         db = client.db('migui_ia');
         usersCollection = db.collection('users');
