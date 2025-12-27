@@ -225,12 +225,13 @@ app.post('/api/track/login', async (req, res) => {
         }
 
         const now = new Date();
+        const clientIP = getClientIP(req);
 
         // Upsert user
         await usersCollection.updateOne(
             { email },
             {
-                $set: { name, picture, lastLogin: now },
+                $set: { name, picture, lastLogin: now, ip: clientIP },
                 $setOnInsert: {
                     email,
                     firstLogin: now,

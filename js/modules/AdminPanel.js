@@ -428,10 +428,19 @@ class AdminPanel {
 
         // Normalize user fields for DB users
         const username = user.name || user.username || user.email?.split('@')[0] || 'Usuario';
+        const userIP = user.ip || 'No disponible';
 
-        const bans = typeof userModeration !== 'undefined' ? userModeration.getBannedUsers() : [];
-        const isBanned = bans.some(b => b.email === user.email || b.ip === user.ip);
-        const currentLimit = typeof userModeration !== 'undefined' ? userModeration.getUserLimit(user.email) : null;
+        // Get ban/limit status - prefer DB data, fallback to local
+        const localBans = typeof userModeration !== 'undefined' ? userModeration.getBannedUsers() : [];
+        const isBanned = user.isBanned || localBans.some(b => b.email === user.email);
+
+        // Get limit from DB user first (-1 means no limit), then fallback to local
+        let currentLimit = null;
+        if (user.dailyLimit !== undefined && user.dailyLimit !== -1) {
+            currentLimit = user.dailyLimit;
+        } else if (typeof userModeration !== 'undefined') {
+            currentLimit = userModeration.getUserLimit(user.email);
+        }
 
         const modal = document.createElement('div');
         modal.id = 'user-modal';
@@ -448,7 +457,7 @@ class AdminPanel {
                 
                 <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 14px; margin-bottom: 18px; font-size: 14px;">
                     <div style="color: #888;">📧 ${user.email}</div>
-                    <div style="color: #888;">🌐 ${user.ip}</div>
+                    <div style="color: #888;">🌐 ${userIP}</div>
                 </div>
                 
                 <!-- Tabs -->
