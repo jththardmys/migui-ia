@@ -15,6 +15,7 @@ class AdminPanel {
         this.selectedUser = null;
         this.currentIP = null;
         this.userFilter = ''; // Filter for queries/changes by email
+        this.cachedUsers = []; // Cache users from DB for modal access
 
         this.init();
     }
@@ -385,6 +386,9 @@ class AdminPanel {
 
             contentDiv.innerHTML = html;
 
+            // Cache users for modal access
+            this.cachedUsers = users;
+
             // Add click handlers
             document.querySelectorAll('.user-card').forEach(card => {
                 card.addEventListener('click', () => this.showUserModal(parseInt(card.dataset.index)));
@@ -417,9 +421,13 @@ class AdminPanel {
     }
 
     showUserModal(userIndex) {
-        const users = this.getUsers();
+        // Use cached users from DB fetch, fallback to localStorage
+        const users = this.cachedUsers.length > 0 ? this.cachedUsers : this.getUsers();
         const user = users[userIndex];
         if (!user) return;
+
+        // Normalize user fields for DB users
+        const username = user.name || user.username || user.email?.split('@')[0] || 'Usuario';
 
         const bans = typeof userModeration !== 'undefined' ? userModeration.getBannedUsers() : [];
         const isBanned = bans.some(b => b.email === user.email || b.ip === user.ip);
@@ -434,7 +442,7 @@ class AdminPanel {
         modal.innerHTML = `
             <div style="background: #1a1a2e; border: 1px solid #667eea; border-radius: 16px; padding: 24px; width: 500px; max-width: 95%; max-height: 85vh; overflow-y: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-                    <h3 style="margin: 0; color: #fff; font-size: 20px;">⚙️ ${user.username}</h3>
+                    <h3 style="margin: 0; color: #fff; font-size: 20px;">⚙️ ${username}</h3>
                     <button id="close-modal-btn" style="background: none; border: none; color: #888; font-size: 28px; cursor: pointer;">×</button>
                 </div>
                 
