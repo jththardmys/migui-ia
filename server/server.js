@@ -10,6 +10,9 @@ const { MongoClient } = require('mongodb');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy for rate limiting behind Render's load balancer
+app.set('trust proxy', 1);
+
 // === CONFIGURATION ===
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const CREATOR_IP = process.env.CREATOR_IP || '';
