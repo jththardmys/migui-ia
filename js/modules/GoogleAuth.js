@@ -76,6 +76,9 @@ class GoogleAuth {
             this.isAuthenticated = true;
             this.saveSession();
 
+            // Track login to central database
+            this.trackLogin();
+
             console.log('✅ Google Sign-In successful:', this.user.email);
 
             // Trigger callback
@@ -85,6 +88,31 @@ class GoogleAuth {
         } catch (error) {
             console.error('Error processing Google credential:', error);
         }
+    }
+
+    async trackLogin() {
+        try {
+            const backendUrl = this.getBackendUrl();
+            await fetch(`${backendUrl}/track/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: this.user.email,
+                    name: this.user.name,
+                    picture: this.user.picture
+                })
+            });
+        } catch (e) {
+            console.warn('Could not track login:', e.message);
+        }
+    }
+
+    getBackendUrl() {
+        const hostname = window.location.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return 'http://localhost:3001/api';
+        }
+        return 'https://migui-ia.onrender.com/api';
     }
 
     parseJwt(token) {

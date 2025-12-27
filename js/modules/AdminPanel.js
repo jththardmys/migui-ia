@@ -180,6 +180,30 @@ class AdminPanel {
         catch (e) { return []; }
     }
 
+    getBackendUrl() {
+        const hostname = window.location.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return 'http://localhost:3001/api';
+        }
+        return 'https://migui-ia.onrender.com/api';
+    }
+
+    async fetchUsersFromDB() {
+        try {
+            const adminEmail = googleAuth?.user?.email || '';
+            const response = await fetch(`${this.getBackendUrl()}/admin/users`, {
+                headers: { 'X-Admin-Email': adminEmail }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                return data.users || [];
+            }
+        } catch (e) {
+            console.warn('Could not fetch users from DB:', e.message);
+        }
+        return null;
+    }
+
     deleteUser(index) {
         const users = this.getUsers();
         if (index >= 0 && index < users.length) {
@@ -301,46 +325,75 @@ class AdminPanel {
     }
 
     renderUsersTab() {
-        const users = this.getUsers();
-        if (users.length === 0) return '<div style="text-align: center; color: #888; padding: 30px; font-size: 16px;">No hay usuarios</div>';
+        // Show loading state
+        const contentDiv = document.querySelector('.admin-tab-content');
+        if (contentDiv) {
+            contentDiv.innerHTML = '<div style="text-align: center; color: #667eea; padding: 30px;">Cargando usuarios...</div>';
+        }
 
-        const limits = typeof userModeration !== 'undefined' ? userModeration.getUserLimits() : {};
-        const bans = typeof userModeration !== 'undefined' ? userModeration.getBannedUsers() : [];
+        // Fetch from backend then render
+        this.fetchUsersFromDB().then(dbUsers => {
+            let users = dbUsers;
+            let fromDB = true;
 
-        setTimeout(() => {
+            // Fallback to localStorage if DB unavailable
+            if (!users || users.length === 0) {
+                users = this.getUsers();
+                fromDB = false;
+            }
+
+            if (users.length === 0) {
+                if (contentDiv) contentDiv.innerHTML = '<div style="text-align: center; color: #888; padding: 30px; font-size: 16px;">No hay usuarios</div>';
+                return;
+            }
+
+            const limits = typeof userModeration !== 'undefined' ? userModeration.getUserLimits() : {};
+            const bans = typeof userModeration !== 'undefined' ? userModeration.getBannedUsers() : [];
+
+            const html = `
+                <div style="margin-bottom: 10px; color: #888; font-size: 12px;">${fromDB ? '📡 Datos desde servidor' : '💾 Datos locales'}</div>
+                ${users.map((user, i) => {
+                const email = user.email || '';
+                const name = user.name || user.username || email.split('@')[0];
+                const isBanned = user.isBanned || bans.some(b => b.email === email);
+                const limit = user.dailyLimit !== -1 ? user.dailyLimit : limits[email];
+                const registeredDate = this.formatDate(user.firstLogin || user.registeredAt);
+                const lastSeenDate = this.formatDate(user.lastLogin || user.lastSeen);
+                const visits = user.loginCount || user.visits || 1;
+                return `
+                    <div class="user-card" data-index="${i}" data-email="${email}" style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 10px; border: 1px solid ${isBanned ? '#ff4d4d44' : '#667eea22'}; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+                            ${user.picture ? `<img src="${user.picture}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid ${isBanned ? '#ff4d4d' : '#10a37f'};">` :
+                        `<div style="width: 44px; height: 44px; background: ${isBanned ? '#ff4d4d' : 'linear-gradient(135deg, #10a37f 0%, #0d8a6a 100%)'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 18px;">
+                                ${isBanned ? '🚫' : name.charAt(0).toUpperCase()}
+                            </div>`}
+                            <div style="flex: 1;">
+                                <div style="color: ${isBanned ? '#ff6666' : '#fff'}; font-weight: 600; font-size: 16px;">${name} ${isBanned ? '(Baneado)' : ''}</div>
+                                <div style="color: #666; font-size: 13px;">${email}</div>
+                            </div>
+                            <div style="text-align: right; font-size: 13px;">
+                                <div style="color: #888;">${visits} visitas</div>
+                                ${limit ? `<div style="color: #ffa500;">${limit} msg/día</div>` : ''}
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px; color: #666; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px;">
+                            <div>📅 <span style="color: #10a37f;">Registro:</span> ${registeredDate}</div>
+                            <div>🕐 <span style="color: #667eea;">Última vez:</span> ${lastSeenDate}</div>
+                            <div>📊 Mensajes: ${user.messageCount || 0}</div>
+                            <div>⏱️ Hace: ${this.formatTimeAgo(user.lastLogin || user.lastSeen)}</div>
+                        </div>
+                    </div>
+                `}).join('')}`;
+
+            if (contentDiv) contentDiv.innerHTML = html;
+
+            // Add click handlers
             document.querySelectorAll('.user-card').forEach(card => {
                 card.addEventListener('click', () => this.showUserModal(parseInt(card.dataset.index)));
             });
-        }, 0);
+        });
 
-        return users.map((user, i) => {
-            const isBanned = bans.some(b => b.email === user.email || b.ip === user.ip);
-            const limit = limits[user.email];
-            const registeredDate = this.formatDate(user.registeredAt);
-            const lastSeenDate = this.formatDate(user.lastSeen);
-            return `
-            <div class="user-card" data-index="${i}" style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 10px; border: 1px solid ${isBanned ? '#ff4d4d44' : '#667eea22'}; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-                    <div style="width: 44px; height: 44px; background: ${isBanned ? '#ff4d4d' : 'linear-gradient(135deg, #10a37f 0%, #0d8a6a 100%)'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 18px;">
-                        ${isBanned ? '🚫' : user.username.charAt(0).toUpperCase()}
-                    </div>
-                    <div style="flex: 1;">
-                        <div style="color: ${isBanned ? '#ff6666' : '#fff'}; font-weight: 600; font-size: 16px;">${user.username} ${isBanned ? '(Baneado)' : ''}</div>
-                        <div style="color: #666; font-size: 13px;">${user.email}</div>
-                    </div>
-                    <div style="text-align: right; font-size: 13px;">
-                        <div style="color: #888;">${user.visits || 1} visitas</div>
-                        ${limit ? `<div style="color: #ffa500;">${limit} msg/día</div>` : ''}
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px; color: #666; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px;">
-                    <div>📅 <span style="color: #10a37f;">Registro:</span> ${registeredDate}</div>
-                    <div>🕐 <span style="color: #667eea;">Última vez:</span> ${lastSeenDate}</div>
-                    <div>🌐 IP: ${user.ip || 'N/A'}</div>
-                    <div>⏱️ Hace: ${this.formatTimeAgo(user.lastSeen)}</div>
-                </div>
-            </div>
-        `}).join('');
+        return '<div style="text-align: center; color: #667eea; padding: 30px;">Cargando usuarios...</div>';
     }
 
     formatDate(dateString) {
