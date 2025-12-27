@@ -509,40 +509,86 @@ class AdminPanel {
         document.getElementById('close-modal-btn').addEventListener('click', () => modal.remove());
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 
-        document.getElementById('save-limit-btn').addEventListener('click', () => {
+        document.getElementById('save-limit-btn').addEventListener('click', async () => {
             const limit = document.getElementById('limit-input').value;
+            const limitValue = limit === '' ? -1 : parseInt(limit);
+
+            // Sync to backend
+            try {
+                await fetch(`${this.getBackendUrl()}/admin/limit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Email': googleAuth?.user?.email || ''
+                    },
+                    body: JSON.stringify({ email: user.email, limit: limitValue })
+                });
+            } catch (e) {
+                console.warn('Could not sync limit to backend:', e.message);
+            }
+
+            // Also update local
             if (typeof userModeration !== 'undefined') {
                 userModeration.setUserLimit(user.email, limit === '' ? null : parseInt(limit));
-                showToast('Límite actualizado', 'success');
-                modal.remove();
-                this.renderPanel();
             }
+            showToast('Límite actualizado', 'success');
+            modal.remove();
+            this.renderPanel();
         });
 
         // Only add event listeners if user is NOT the admin (buttons don't exist for admin)
         if (user.ip !== this.ADMIN_IP) {
             if (isBanned) {
-                document.getElementById('unban-btn').addEventListener('click', () => {
+                document.getElementById('unban-btn').addEventListener('click', async () => {
+                    // Sync to backend
+                    try {
+                        await fetch(`${this.getBackendUrl()}/admin/ban`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Admin-Email': googleAuth?.user?.email || ''
+                            },
+                            body: JSON.stringify({ email: user.email, ban: false })
+                        });
+                    } catch (e) {
+                        console.warn('Could not sync unban to backend:', e.message);
+                    }
+
                     if (typeof userModeration !== 'undefined') {
                         userModeration.unbanByIdentifier(user.email, user.ip);
-                        showToast('Usuario desbaneado', 'success');
-                        modal.remove();
-                        this.renderPanel();
                     }
+                    showToast('Usuario desbaneado', 'success');
+                    modal.remove();
+                    this.renderPanel();
                 });
             } else {
-                document.getElementById('ban-btn').addEventListener('click', () => {
-                    // Ban user directly without confirm dialog
+                document.getElementById('ban-btn').addEventListener('click', async () => {
+                    // Sync to backend
+                    try {
+                        await fetch(`${this.getBackendUrl()}/admin/ban`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Admin-Email': googleAuth?.user?.email || ''
+                            },
+                            body: JSON.stringify({ email: user.email, ban: true })
+                        });
+                    } catch (e) {
+                        console.warn('Could not sync ban to backend:', e.message);
+                    }
+
                     if (typeof userModeration !== 'undefined') {
-                        const success = userModeration.banUser(user.username, user.email, user.ip);
+                        const success = userModeration.banUser(username, user.email, user.ip);
                         if (success) {
                             showToast('Usuario baneado correctamente', 'success');
                         } else {
                             showToast('No puedes banearte a ti mismo (admin protegido)', 'warning');
                         }
-                        modal.remove();
-                        this.renderPanel();
+                    } else {
+                        showToast('Usuario baneado correctamente', 'success');
                     }
+                    modal.remove();
+                    this.renderPanel();
                 });
             }
 
@@ -582,24 +628,60 @@ class AdminPanel {
     }
 
     renderUserQueries(email) {
-        if (typeof activityTracker === 'undefined') {
-            return '<div style="color: #888; text-align: center; padding: 20px;">No disponible</div>';
-        }
+        // Show loading state first, then fetch async
+        setTimeout(async () => {
+            const container = document.getElementById('user-queries-container');
+            if (!container) return;
 
-        const queries = activityTracker.getQueriesByUser(email, 30);
+            // Try backend first
+            try {
+                const response = await fetch(`${this.getBackendUrl()}/admin/activity?email=${encodeURIComponent(email)}&limit=30`, {
+                    headers: { 'X-Admin-Email': googleAuth?.user?.email || '' }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const queries = (data.activity || []).filter(a => a.type === 'query');
 
-        if (queries.length === 0) {
-            return '<div style="color: #888; text-align: center; padding: 20px;">No hay búsquedas registradas</div>';
-        }
+                    if (queries.length === 0) {
+                        container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No hay búsquedas registradas</div>';
+                        return;
+                    }
 
-        return queries.map(q => `
-            <div style="background: rgba(255,255,255,0.03); border-radius: 5px; padding: 8px; margin-bottom: 4px; border-left: 2px solid #667eea;">
-                <div style="color: #ccc; font-size: 11px; line-height: 1.3;">${this.escapeHtml(q.text)}</div>
-                <div style="color: #555; font-size: 9px; margin-top: 3px;">
-                    ${new Date(q.time).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                </div>
-            </div>
-        `).join('');
+                    container.innerHTML = queries.map(q => `
+                        <div style="background: rgba(255,255,255,0.03); border-radius: 5px; padding: 8px; margin-bottom: 4px; border-left: 2px solid #667eea;">
+                            <div style="color: #ccc; font-size: 11px; line-height: 1.3;">${this.escapeHtml(q.query || q.text || '')}</div>
+                            <div style="color: #555; font-size: 9px; margin-top: 3px;">
+                                ${new Date(q.timestamp || q.time).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                        </div>
+                    `).join('');
+                    return;
+                }
+            } catch (e) {
+                console.warn('Could not fetch queries from backend:', e.message);
+            }
+
+            // Fallback to local
+            if (typeof activityTracker !== 'undefined') {
+                const queries = activityTracker.getQueriesByUser(email, 30);
+                if (queries.length === 0) {
+                    container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No hay búsquedas registradas</div>';
+                    return;
+                }
+                container.innerHTML = queries.map(q => `
+                    <div style="background: rgba(255,255,255,0.03); border-radius: 5px; padding: 8px; margin-bottom: 4px; border-left: 2px solid #667eea;">
+                        <div style="color: #ccc; font-size: 11px; line-height: 1.3;">${this.escapeHtml(q.text)}</div>
+                        <div style="color: #555; font-size: 9px; margin-top: 3px;">
+                            ${new Date(q.time).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No disponible</div>';
+            }
+        }, 100);
+
+        return '<div id="user-queries-container"><div style="color: #667eea; text-align: center; padding: 20px;">Cargando búsquedas...</div></div>';
     }
 
     renderBansTab() {
