@@ -26,9 +26,8 @@ class AIEngine {
             // Development - backend runs on port 3001
             return 'http://localhost:3001/api';
         } else {
-            // Production - backend runs on same domain or specified URL
-            // Update this URL when you deploy your backend
-            return window.BACKEND_URL || '/api';
+            // Production - use Render backend
+            return 'https://migui-ia.onrender.com/api';
         }
     }
 
