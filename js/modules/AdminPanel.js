@@ -326,7 +326,7 @@ class AdminPanel {
 
     renderUsersTab() {
         // Show loading state
-        const contentDiv = document.querySelector('.admin-tab-content');
+        const contentDiv = document.querySelector('#admin-content');
         if (contentDiv) {
             contentDiv.innerHTML = '<div style="text-align: center; color: #667eea; padding: 30px;">Cargando usuarios...</div>';
         }
