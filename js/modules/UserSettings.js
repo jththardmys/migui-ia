@@ -444,6 +444,7 @@ class UserSettings {
 
         // Sync to server
         this.syncProfileToServer({ customName: newName });
+        this.trackProfileChange('name', oldName, newName);
 
         showToast('Nombre actualizado', 'success');
         this.closeSettings();
@@ -466,6 +467,32 @@ class UserSettings {
             });
         } catch (e) {
             console.warn('Could not sync profile to server:', e.message);
+        }
+    }
+
+    // Track profile changes to server for admin logging
+    async trackProfileChange(changeType, oldValue, newValue) {
+        try {
+            const profile = this.getProfileData();
+            if (!profile.email) return;
+
+            const backendUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'http://localhost:3001/api'
+                : 'https://migui-ia.onrender.com/api';
+
+            await fetch(`${backendUrl}/track/profile-change`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: profile.email,
+                    changeType,
+                    oldValue,
+                    newValue,
+                    username: profile.username
+                })
+            });
+        } catch (e) {
+            console.warn('Could not track profile change:', e.message);
         }
     }
 
@@ -506,6 +533,9 @@ class UserSettings {
 
             // Update admin registry
             this.updateAdminRegistry({ avatar: newAvatar });
+
+            // Track to server (just record that avatar changed, not the full base64)
+            this.trackProfileChange('avatar', '[foto anterior]', '[nueva foto]');
 
             showToast('Foto de perfil actualizada', 'success');
         };

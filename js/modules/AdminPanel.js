@@ -482,6 +482,16 @@ class AdminPanel {
                         </div>
                     </div>
                     
+                    <div style="margin-bottom: 18px; border-top: 1px solid #333; padding-top: 18px;">
+                        <label style="color: #ccc; font-size: 15px; display: block; margin-bottom: 8px;">💬 Mensaje personalizado (próxima respuesta de la IA):</label>
+                        <div style="margin-bottom: 8px;">
+                            <textarea id="custom-message-input" placeholder="Deja vacío para respuesta normal. Escribe un mensaje y la IA responderá con esto la próxima vez que el usuario pregunte." 
+                                style="width: 100%; background: #16213e; border: 1px solid #333; color: #fff; padding: 14px; border-radius: 10px; font-size: 14px; min-height: 80px; resize: vertical; box-sizing: border-box;">${user.customNextMessage || ''}</textarea>
+                        </div>
+                        <button id="save-message-btn" style="width: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border: none; color: #fff; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 14px;">💾 Guardar mensaje personalizado</button>
+                        <div style="color: #888; font-size: 11px; margin-top: 6px;">⚠️ Este mensaje se usará UNA VEZ y luego se borrará automáticamente</div>
+                    </div>
+                    
                     ${user.ip === this.ADMIN_IP ? `
                         <div style="border-top: 1px solid #333; padding-top: 18px;">
                             <div style="background: rgba(102,126,234,0.1); border: 1px solid #667eea44; border-radius: 10px; padding: 20px; text-align: center;">
@@ -548,6 +558,26 @@ class AdminPanel {
             showToast('Límite actualizado', 'success');
             modal.remove();
             this.renderPanel();
+        });
+
+        // Save custom message button
+        document.getElementById('save-message-btn').addEventListener('click', async () => {
+            const customMessage = document.getElementById('custom-message-input').value.trim();
+
+            try {
+                await fetch(`${this.getBackendUrl()}/admin/set-message`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Email': googleAuth?.user?.email || ''
+                    },
+                    body: JSON.stringify({ email: user.email, customMessage: customMessage || null })
+                });
+                showToast(customMessage ? 'Mensaje personalizado guardado' : 'Mensaje personalizado eliminado', 'success');
+            } catch (e) {
+                console.warn('Could not save custom message:', e.message);
+                showToast('Error al guardar mensaje', 'error');
+            }
         });
 
         // Only add event listeners if user is NOT the admin (buttons don't exist for admin)

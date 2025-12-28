@@ -257,6 +257,9 @@ class ChatManager {
             const deletedChat = chats[chatIndex];
             deletedChat.deletedAt = new Date().toISOString();
 
+            // Track to server
+            this.trackChatDeletion(deletedChat);
+
             // Add to deleted chats
             const deletedChats = this.getDeletedChats();
             deletedChats.push(deletedChat);
@@ -279,6 +282,30 @@ class ChatManager {
 
             this.renderChatList();
             showToast('Chat eliminado', 'info');
+        }
+    }
+
+    // Track chat deletion to server
+    async trackChatDeletion(chat) {
+        try {
+            const email = typeof googleAuth !== 'undefined' ? googleAuth.getEmail() : null;
+            if (!email) return;
+
+            const backendUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'http://localhost:3001/api'
+                : 'https://migui-ia.onrender.com/api';
+
+            await fetch(`${backendUrl}/track/chat-deleted`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email,
+                    chatTitle: chat.name,
+                    messageCount: chat.messages?.length || 0
+                })
+            });
+        } catch (e) {
+            console.warn('Could not track chat deletion:', e.message);
         }
     }
 

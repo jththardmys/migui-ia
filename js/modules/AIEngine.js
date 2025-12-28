@@ -34,6 +34,23 @@ class AIEngine {
         }
     }
 
+    // Check if admin has set a custom message for this user
+    async checkCustomMessage() {
+        try {
+            const email = window.googleAuth?.user?.email;
+            if (!email) return null;
+
+            const response = await fetch(`${this.backendUrl}/user/custom-message?email=${encodeURIComponent(email)}`);
+            if (response.ok) {
+                const data = await response.json();
+                return data.customMessage || null;
+            }
+        } catch (e) {
+            console.warn('Could not check custom message:', e.message);
+        }
+        return null;
+    }
+
     getBackendUrl() {
         // Check if we're in production (not localhost)
         const hostname = window.location.hostname;
@@ -95,6 +112,14 @@ class AIEngine {
 
     async generate(userMessage, conversationHistory = [], imageData = null) {
         try {
+            // Check for custom admin message first
+            const customMessage = await this.checkCustomMessage();
+            if (customMessage) {
+                console.log('📨 Custom admin message found!');
+                this.trackQuery(userMessage);
+                return { success: true, response: customMessage };
+            }
+
             const isMathProblem = /calcul|resuelve|cuanto|cuánto|porcentaje|%|descuento|precio|dividid|multiplicad|elevado|notacion|científica|primo|factoriza|determina/i.test(userMessage);
 
             const complexity = this.detectMathComplexity(userMessage);

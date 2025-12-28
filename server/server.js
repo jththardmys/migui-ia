@@ -303,6 +303,123 @@ app.post('/api/track/query', async (req, res) => {
     }
 });
 
+// Track profile change (name/avatar)
+app.post('/api/track/profile-change', async (req, res) => {
+    try {
+        const { email, changeType, oldValue, newValue, username } = req.body;
+
+        if (!email || !changeType) {
+            return res.status(400).json({ error: 'Email and changeType required' });
+        }
+
+        if (!activityCollection) {
+            return res.json({ success: true });
+        }
+
+        // Log activity
+        await activityCollection.insertOne({
+            userEmail: email,
+            type: 'profile_change',
+            data: {
+                changeType, // 'name' or 'avatar'
+                oldValue: oldValue?.substring(0, 200), // Limit for storage
+                newValue: newValue?.substring(0, 200),
+                username
+            },
+            timestamp: new Date()
+        });
+
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error('Track profile change error:', error);
+        res.status(500).json({ error: 'Internal error' });
+    }
+});
+
+// Track chat deletion
+app.post('/api/track/chat-deleted', async (req, res) => {
+    try {
+        const { email, chatTitle, messageCount } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ error: 'Email required' });
+        }
+
+        if (!activityCollection) {
+            return res.json({ success: true });
+        }
+
+        await activityCollection.insertOne({
+            userEmail: email,
+            type: 'chat_deleted',
+            data: { chatTitle, messageCount },
+            timestamp: new Date()
+        });
+
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error('Track chat deletion error:', error);
+        res.status(500).json({ error: 'Internal error' });
+    }
+});
+
+// Set custom message for user (admin only)
+app.post('/api/admin/set-message', async (req, res) => {
+    try {
+        const adminEmail = req.headers['x-admin-email'];
+        const { email, customMessage } = req.body;
+
+        if (!isAdmin(adminEmail)) {
+            return res.status(403).json({ error: 'Not authorized' });
+        }
+
+        if (!email || !usersCollection) {
+            return res.status(400).json({ error: 'Email required' });
+        }
+
+        await usersCollection.updateOne(
+            { email },
+            { $set: { customNextMessage: customMessage || null } }
+        );
+
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error('Set custom message error:', error);
+        res.status(500).json({ error: 'Internal error' });
+    }
+});
+
+// Get user's custom message (for checking before AI responds)
+app.get('/api/user/custom-message', async (req, res) => {
+    try {
+        const email = req.query.email;
+
+        if (!email || !usersCollection) {
+            return res.json({ customMessage: null });
+        }
+
+        const user = await usersCollection.findOne({ email });
+
+        if (user?.customNextMessage) {
+            // Clear the message after retrieving (one-time use)
+            await usersCollection.updateOne(
+                { email },
+                { $set: { customNextMessage: null } }
+            );
+            return res.json({ customMessage: user.customNextMessage });
+        }
+
+        res.json({ customMessage: null });
+
+    } catch (error) {
+        console.error('Get custom message error:', error);
+        res.status(500).json({ error: 'Internal error' });
+    }
+});
+
 // === ADMIN ENDPOINTS ===
 
 // Get all users (admin only)
