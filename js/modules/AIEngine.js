@@ -18,6 +18,22 @@ class AIEngine {
         console.log('🚀 AIEngine initialized - Backend:', this.backendUrl);
     }
 
+    // Track query to backend for message counting
+    async trackQuery(query) {
+        try {
+            const email = window.googleAuth?.user?.email;
+            if (!email) return;
+
+            await fetch(`${this.backendUrl}/track/query`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, query })
+            });
+        } catch (e) {
+            console.warn('Could not track query:', e.message);
+        }
+    }
+
     getBackendUrl() {
         // Check if we're in production (not localhost)
         const hostname = window.location.hostname;
@@ -97,6 +113,9 @@ class AIEngine {
                     conversationHistory: conversationHistory
                 });
 
+                // Track query for message counting
+                this.trackQuery(userMessage || '[imagen]');
+
                 return {
                     success: true,
                     response: result.response
@@ -146,6 +165,7 @@ class AIEngine {
                         });
 
                         console.log('✅ Correction applied');
+                        this.trackQuery(userMessage);
                         return { success: true, response: correctedResult.response };
                     } else {
                         console.log(`✅ Answer OK (confidence: ${verifyResult.confidence})`);
@@ -157,6 +177,9 @@ class AIEngine {
             } else if (isMathProblem) {
                 console.log('📝 Simple math problem - skipping verification');
             }
+
+            // Track query for message counting
+            this.trackQuery(userMessage);
 
             return { success: true, response: primaryAnswer };
 
