@@ -423,6 +423,38 @@ app.post('/api/admin/limit', async (req, res) => {
     }
 });
 
+// Update user profile (custom name, avatar)
+app.post('/api/user/profile', async (req, res) => {
+    try {
+        const { email, customName, avatar } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ error: 'Email required' });
+        }
+
+        if (!usersCollection) {
+            return res.json({ success: true, message: 'DB not connected' });
+        }
+
+        const updates = {};
+        if (customName !== undefined) updates.customName = customName;
+        if (avatar !== undefined) updates.avatar = avatar;
+
+        if (Object.keys(updates).length > 0) {
+            await usersCollection.updateOne(
+                { email },
+                { $set: updates }
+            );
+        }
+
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({ error: 'Internal error' });
+    }
+});
+
 // Check if user is banned/limited
 app.get('/api/user/status', async (req, res) => {
     try {

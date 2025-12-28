@@ -442,8 +442,31 @@ class UserSettings {
         // Update admin registry
         this.updateAdminRegistry({ username: newName });
 
+        // Sync to server
+        this.syncProfileToServer({ customName: newName });
+
         showToast('Nombre actualizado', 'success');
         this.closeSettings();
+    }
+
+    // Sync profile data to server
+    async syncProfileToServer(updates) {
+        try {
+            const profile = this.getProfileData();
+            if (!profile.email) return;
+
+            const backendUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'http://localhost:3001/api'
+                : 'https://migui-ia.onrender.com/api';
+
+            await fetch(`${backendUrl}/user/profile`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: profile.email, ...updates })
+            });
+        } catch (e) {
+            console.warn('Could not sync profile to server:', e.message);
+        }
     }
 
     changeAvatar(file) {

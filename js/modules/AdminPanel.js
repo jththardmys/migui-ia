@@ -353,7 +353,9 @@ class AdminPanel {
                 <div style="margin-bottom: 10px; color: #888; font-size: 12px;">${fromDB ? '📡 Datos desde servidor' : '💾 Datos locales'} (${users.length})</div>
                 ${users.map((user, i) => {
                 const email = user.email || '';
-                const name = user.name || user.username || email.split('@')[0];
+                const customName = user.customName; // Name they set in AI settings
+                const googleName = user.name || user.username || email.split('@')[0];
+                const displayName = customName || googleName; // Prefer custom name
                 const isBanned = user.isBanned || bans.some(b => b.email === email);
                 const limit = user.dailyLimit !== -1 ? user.dailyLimit : limits[email];
                 const registeredDate = this.formatDate(user.firstLogin || user.registeredAt);
@@ -364,10 +366,10 @@ class AdminPanel {
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
                             ${user.picture ? `<img src="${user.picture}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid ${isBanned ? '#ff4d4d' : '#10a37f'};">` :
                         `<div style="width: 44px; height: 44px; background: ${isBanned ? '#ff4d4d' : 'linear-gradient(135deg, #10a37f 0%, #0d8a6a 100%)'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 18px;">
-                                ${isBanned ? '🚫' : name.charAt(0).toUpperCase()}
+                                ${isBanned ? '🚫' : displayName.charAt(0).toUpperCase()}
                             </div>`}
                             <div style="flex: 1;">
-                                <div style="color: ${isBanned ? '#ff6666' : '#fff'}; font-weight: 600; font-size: 16px;">${name} ${isBanned ? '(Baneado)' : ''}</div>
+                                <div style="color: ${isBanned ? '#ff6666' : '#fff'}; font-weight: 600; font-size: 16px;">${displayName} ${customName ? `<span style="color: #667eea; font-size: 11px; font-weight: normal;">(${googleName})</span>` : ''} ${isBanned ? '(Baneado)' : ''}</div>
                                 <div style="color: #666; font-size: 13px;">${email}</div>
                             </div>
                             <div style="text-align: right; font-size: 13px;">
@@ -427,7 +429,9 @@ class AdminPanel {
         if (!user) return;
 
         // Normalize user fields for DB users
-        const username = user.name || user.username || user.email?.split('@')[0] || 'Usuario';
+        const googleName = user.name || user.username || user.email?.split('@')[0] || 'Usuario';
+        const customName = user.customName; // Name they set in AI settings
+        const displayName = customName || googleName;
         const userIP = user.ip || 'No disponible';
 
         // Get ban/limit status - prefer DB data, fallback to local
@@ -451,13 +455,14 @@ class AdminPanel {
         modal.innerHTML = `
             <div style="background: #1a1a2e; border: 1px solid #667eea; border-radius: 16px; padding: 24px; width: 500px; max-width: 95%; max-height: 85vh; overflow-y: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-                    <h3 style="margin: 0; color: #fff; font-size: 20px;">⚙️ ${username}</h3>
+                    <h3 style="margin: 0; color: #fff; font-size: 20px;">⚙️ ${displayName} ${customName ? `<span style="color: #667eea; font-size: 13px; font-weight: normal;">(${googleName})</span>` : ''}</h3>
                     <button id="close-modal-btn" style="background: none; border: none; color: #888; font-size: 28px; cursor: pointer;">×</button>
                 </div>
                 
                 <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 14px; margin-bottom: 18px; font-size: 14px;">
                     <div style="color: #888;">📧 ${user.email}</div>
                     <div style="color: #888;">🌐 ${userIP}</div>
+                    ${customName ? `<div style="color: #667eea; margin-top: 4px;">🏷️ Nombre IA: ${customName}</div>` : ''}
                 </div>
                 
                 <!-- Tabs -->
